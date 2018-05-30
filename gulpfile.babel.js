@@ -13,7 +13,9 @@ import serve from "gulp-serve";
 
 const browserSync = BrowserSync.create();
 
-
+var srcDir = 'src';
+var destDir = 'dist';
+var siteDir = 'site';
 
 /*
   local webserver for development
@@ -32,7 +34,7 @@ gulp.task("watch", function () {
 
 
 // Hugo arguments
-const hugoArgsDefault = ["-d", "../dist", "-s", "site", "-v"];
+const hugoArgsDefault = ["-d", "../dist", "-s", "src/site", "-v"];
 const hugoArgsPreview = ["--buildDrafts", "--buildFuture"];
 
 // Development tasks
@@ -45,8 +47,8 @@ gulp.task("server-preview", ["hugo-preview", "css", "js", "fonts"], (cb) => runS
 
 // Build/production tasks TODO: to add in get comments from the original gulpfile
 gulp.task("build", ["css", "js", "fonts"], (cb) => buildSite(cb, [], "production"));
-gulp.task("build:local", ["css", "js", "fonts"], (cb) => buildSite(cb, [], "production"));
-gulp.task("build-preview", ["css", "js", "fonts"], (cb) => buildSite(cb, hugoArgsPreview, "production"));
+gulp.task("build:local", ["css", "js", "fonts"], (cb) => buildSite(cb, hugoArgsPreview, "production"));
+//gulp.task("build-preview", ["css", "js", "fonts"], (cb) => buildSite(cb, hugoArgsPreview, "production"));
 
 // Compile CSS with PostCSS
 gulp.task("css", () => (
@@ -114,7 +116,7 @@ gulp.task("get:comments", function () {
       }
 
       // write our data to a file where our site generator can get it.
-      fs.writeFile(buildSrc + "/site/_data/comments.json", JSON.stringify(comments, null, 2), function(err) {
+      fs.writeFile('src' + "/site/_data/comments.json", JSON.stringify(comments, null, 2), function(err) {
         if(err) {
           console.log(err);
         } else {
@@ -138,8 +140,45 @@ function runServer() {
   gulp.watch("./src/js/**/*.js", ["js"]);
   gulp.watch("./src/css/**/*.css", ["css"]);
   gulp.watch("./src/fonts/**/*", ["fonts"]);
-  gulp.watch("./site/**/*", ["hugo"]);
+  gulp.watch("./src/site/**/*", ["hugo"]);
 };
+
+/*
+  Check if we need to help the developer setup the Netlify environment variables
+*/
+gulp.task('check-init', function () {
+
+  // Look for the environment variables
+  if(process.env.APPROVED_COMMENTS_FORM_ID && process.env.API_AUTH && process.env.SLACK_WEBHOOK_URL && process.env.URL ) {
+
+    // Automatically detect and set the comments queue form environment variable.
+    var siteDomain = process.env.URL.split("://")[1];
+    var url = `https://api.netlify.com/api/v1/sites/${siteDomain}/forms/?access_token=${process.env.API_AUTH}`;
+
+    // REFACTOR: do this conditionally.. not for every build after envs are init'd
+    request(url, function(err, response, body){
+      if(!err && response.statusCode === 200){
+        var body = JSON.parse(body);
+        var approvedForm = body.filter(function(f){
+          return f.name == 'approved-comments';
+        });
+        var initStatus = {
+          'environment' : true,
+          'approved_form_id' : approvedForm[0].id,
+          'rootURL' :  process.env.URL,
+          'siteName' : siteDomain.replace('.netlify.com', '')
+        };
+        saveInitStatus(initStatus);
+      } else {
+        console.log("Couldn't detect a APPROVED_FORM from the API");
+      }
+    });
+  } else {
+    var initStatus = {"environment" : false};
+    saveInitStatus(initStatus);
+  }
+
+});
 
 /**
  * Run hugo and build the site
