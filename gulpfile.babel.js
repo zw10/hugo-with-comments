@@ -10,6 +10,7 @@ import BrowserSync from "browser-sync";
 import webpack from "webpack";
 import webpackConfig from "./webpack.conf";
 import serve from "gulp-serve";
+import runSequence from 'run-sequence';
 
 const browserSync = BrowserSync.create();
 
@@ -32,7 +33,6 @@ gulp.task("watch", function () {
   gulp.watch('src' + "/**/*", ["build:local"])
 });
 
-
 // Hugo arguments
 const hugoArgsDefault = ["-d", "../dist", "-s", "src/site", "-v"];
 const hugoArgsPreview = ["--buildDrafts", "--buildFuture"];
@@ -46,7 +46,7 @@ gulp.task("server", ["hugo", "css", "js", "fonts"], (cb) => runServer(cb));
 gulp.task("server-preview", ["hugo-preview", "css", "js", "fonts"], (cb) => runServer(cb));
 
 // Build/production tasks TODO: to add in get comments from the original gulpfile
-gulp.task("build", ["css", "js", "fonts"], (cb) => buildSite(cb, [], "production"));
+gulp.task("build",["css", "js", "fonts"], (cb) => buildSite(cb, [], "production"));
 gulp.task("build:local", ["css", "js", "fonts"], (cb) => buildSite(cb, hugoArgsPreview, "production"));
 //gulp.task("build-preview", ["css", "js", "fonts"], (cb) => buildSite(cb, hugoArgsPreview, "production"));
 
@@ -116,7 +116,7 @@ gulp.task("get:comments", function () {
       }
 
       // write our data to a file where our site generator can get it.
-      fs.writeFile('src' + "/site/_data/comments.json", JSON.stringify(comments, null, 2), function(err) {
+      fs.writeFile("src/site/_data/comments.json", JSON.stringify(comments, null, 2), function(err) {
         if(err) {
           console.log(err);
         } else {
